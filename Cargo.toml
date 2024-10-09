@@ -1,0 +1,10 @@
+[workspace]
+
+members = ["crates/*"]
+resolver = "2"
+package.repository = "https://github.com/JadedBlueEyes/matrix-bots"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
