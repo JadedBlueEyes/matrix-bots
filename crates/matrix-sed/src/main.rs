@@ -5,8 +5,8 @@ use handlers::on_room_message;
 use matrix_sdk::{config::SyncSettings, Client};
 use rpassword::prompt_password;
 use tracing::info;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tracing_log::AsTrace;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
 pub struct Config {
@@ -56,7 +56,6 @@ async fn login_and_run(config: Config) -> anyhow::Result<()> {
 async fn main() -> anyhow::Result<()> {
     // Read args
     let mut config = Config::parse();
-    
 
     // Logging
     let filter = tracing_subscriber::EnvFilter::builder()
@@ -68,7 +67,6 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     info!("Starting up");
-
 
     // get connection password
 
