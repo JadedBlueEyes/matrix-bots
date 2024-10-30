@@ -4,6 +4,9 @@ use clap::Parser;
 use handlers::on_room_message;
 use matrix_sdk::{config::SyncSettings, Client};
 use rpassword::prompt_password;
+use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_log::AsTrace;
 
 #[derive(Parser, Debug)]
 pub struct Config {
@@ -16,6 +19,8 @@ pub struct Config {
     /// Password of the bot
     #[arg(short, long, env = "MATRIX_PASSWORD")]
     pub password: Option<String>,
+    #[clap(flatten)]
+    pub(crate) verbose: clap_verbosity_flag::Verbosity,
 }
 
 async fn login_and_run(config: Config) -> anyhow::Result<()> {
@@ -51,12 +56,25 @@ async fn login_and_run(config: Config) -> anyhow::Result<()> {
 async fn main() -> anyhow::Result<()> {
     // Read args
     let mut config = Config::parse();
+    
 
-    // get connexion password
+    // Logging
+    let filter = tracing_subscriber::EnvFilter::builder()
+        .with_default_directive(config.verbose.log_level_filter().as_trace().into())
+        .from_env_lossy();
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    info!("Starting up");
+
+
+    // get connection password
 
     config.password = Some(config.password.unwrap_or_else(|| {
         println!("Type password for the bot (characters won't show up as you type them)");
-        match prompt_password("password:") {
+        match prompt_password("Password: ") {
             Ok(p) => p,
             Err(err) => {
                 panic!("FATAL: failed to get password: {err}");

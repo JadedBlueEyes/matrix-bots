@@ -7,6 +7,7 @@ repository.workspace = true
 [dependencies]
 anyhow = "1.0.91"
 clap = { version = "4.5.20", features = ["derive", "env"] }
+clap-verbosity-flag = "2.2.2"
 matrix-sdk = { version = "0.7.1", features = ["anyhow", "bundled-sqlite"] }
 regex = "1.11.1"
 rpassword = "7.3.1"
@@ -14,4 +15,5 @@ sedregex = "0.2.5"
 similar = "2.6.0"
 tokio = { version = "1.41.0", features = ["rt"] }
 tracing = "0.1.40"
+tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

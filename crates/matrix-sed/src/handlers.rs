@@ -12,15 +12,18 @@ use matrix_sdk::{Client, Room, RoomState};
 use regex::Regex;
 use similar::utils::TextDiffRemapper;
 use similar::{ChangeTag, TextDiff};
+use tracing::{error, info, instrument, trace, warn};
 use std::sync::LazyLock;
 use tokio::time::{sleep, Duration};
 
 pub async fn send_or_log_error(room: &Room, message: RoomMessageEventContent) {
     if let Err(e) = room.send(message).await {
-        println!("Failed to send message to room {}: {}", room.room_id(), e);
+        warn!("Failed to send message to room {}: {}", room.room_id(), e);
     }
 }
 
+
+#[instrument(fields(room_member = room_member.state_key.as_str(), room = room.room_id().as_str(), client = client.user_id().map(|u| u.as_str()).unwrap_or("None")))]
 pub async fn on_stripped_state_member(
     room_member: StrippedRoomMemberEvent,
     client: Client,
@@ -31,14 +34,14 @@ pub async fn on_stripped_state_member(
     }
 
     tokio::spawn(async move {
-        println!("Autojoining room {}", room.room_id());
+        info!("Autojoining room {}", room.room_id());
         let mut delay = 2;
 
         while let Err(err) = room.join().await {
             // retry autojoin due to synapse sending invites, before the
             // invited user can join for more information see
             // https://github.com/matrix-org/synapse/issues/4345
-            println!(
+            warn!(
                 "Failed to join room {} ({err:?}), retrying in {delay}s",
                 room.room_id()
             );
@@ -47,14 +50,15 @@ pub async fn on_stripped_state_member(
             delay *= 2;
 
             if delay > 3600 {
-                println!("Can't join room {} ({err:?})", room.room_id());
+                error!("Can't join room {} ({err:?})", room.room_id());
                 break;
             }
         }
-        println!("Successfully joined room {}", room.room_id());
+        info!("Successfully joined room {}", room.room_id());
     });
 }
 
+#[instrument(fields(event = event.event_id.as_str(), room = room.room_id().as_str()))]
 pub async fn on_room_message(
     event: OriginalSyncRoomMessageEvent,
     room: Room,
@@ -109,11 +113,13 @@ pub async fn on_room_message(
     let reply_event = room.event(&in_reply_to).await?.event.deserialize()?;
 
     let AnyTimelineEvent::MessageLike(AnyMessageLikeEvent::RoomMessage(
-        matrix_sdk::ruma::events::MessageLikeEvent::Original(reply_event_message),
+        matrix_sdk::ruma::events::MessageLikeEvent::Original(ref reply_event_message),
     )) = reply_event
     else {
         return Ok(());
     };
+    
+    trace!(target = reply_event.event_id().as_str(), "Running replacement");
 
     let reply_event_text = remove_plain_reply_fallback(reply_event_message.content.body());
     let command = sedregex::ReplaceCommand::new(&command)?;
