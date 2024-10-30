@@ -1,21 +1,25 @@
-use matrix_sdk::ruma::{
-    events::{
-        room::{
-            member::StrippedRoomMemberEvent,
-            message::{
-                sanitize::remove_plain_reply_fallback, AddMentions, ForwardThread, MessageType,
-                OriginalSyncRoomMessageEvent, Relation, ReplyWithinThread, RoomMessageEventContent,
+use matrix_sdk::{
+    room::MessagesOptions,
+    ruma::{
+        events::{
+            room::{
+                member::StrippedRoomMemberEvent,
+                message::{
+                    sanitize::remove_plain_reply_fallback, AddMentions, ForwardThread, MessageType,
+                    OriginalSyncRoomMessageEvent, Relation, ReplyWithinThread,
+                    RoomMessageEventContent,
+                },
             },
+            AnyMessageLikeEvent, AnyTimelineEvent, MessageLikeEvent,
         },
-        AnyMessageLikeEvent, AnyTimelineEvent, MessageLikeEvent,
+        uint,
     },
-    uint,
 };
 use matrix_sdk::{Client, Room, RoomState};
 use regex::Regex;
 use similar::utils::TextDiffRemapper;
 use similar::{ChangeTag, TextDiff};
-use std::sync::LazyLock;
+use std::{collections::VecDeque, sync::LazyLock};
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, instrument, trace, warn};
 
@@ -90,7 +94,7 @@ pub async fn on_room_message(
     let mut thread_root = None;
 
     trace!("Searching for target");
-    let target_event = if let Some(target_id) =
+    let target_event_message = if let Some(target_id) =
         event
             .content
             .relates_to
@@ -110,38 +114,61 @@ pub async fn on_room_message(
                 }
                 _ => None,
             }) {
-        room.event(&target_id, None)
+        let target_event = room
+            .event(&target_id, None)
             .await?
             .raw()
             .deserialize()?
-            .into_full_event(room.room_id().to_owned())
+            .into_full_event(room.room_id().to_owned());
+
+        let AnyTimelineEvent::MessageLike(AnyMessageLikeEvent::RoomMessage(
+            MessageLikeEvent::Original(target_event_message),
+        )) = target_event
+        else {
+            trace!("Target is not a message");
+            return Ok(());
+        };
+        target_event_message
     } else {
         trace!("No related event found, using event context");
         // TODO: Filter to only events outside of a thread
         let context = room
             .event_with_context(&event.event_id, false, uint!(2), None)
             .await?;
-        let Some(prev) = context.events_before.first() else {
-            trace!("No previous event found, aborting");
-            return Ok(());
-        };
-        prev.raw()
-            .deserialize()?
-            .into_full_event(room.room_id().to_owned())
+        let mut queue = VecDeque::from(context.events_before);
+        let mut paginaton_token = context.prev_batch_token;
+
+        loop {
+            let event = queue
+                .pop_front()
+                .unwrap()
+                .raw()
+                .deserialize()?
+                .into_full_event(room.room_id().to_owned());
+            if let AnyTimelineEvent::MessageLike(AnyMessageLikeEvent::RoomMessage(
+                MessageLikeEvent::Original(target_event_message),
+            )) = event
+            {
+                match target_event_message.content.relates_to {
+                    Some(Relation::Thread(_)) => (), // Skip messages in threads
+                    _ => break target_event_message,
+                };
+            }
+            if queue.is_empty() {
+                trace!("searching for more messages");
+                // If we've reached the end of the queue, fetch more messages
+                let options = MessagesOptions::backward().from(paginaton_token.as_deref());
+                let messages = room.messages(options).await?;
+                paginaton_token = messages.end;
+                queue = VecDeque::from(messages.chunk);
+            }
+        }
     };
 
     trace!(
-        id = target_event.event_id().as_str(),
+        id = target_event_message.event_id.as_str(),
         "Target message found"
     );
-    // Only continue if it's a message-like event (filter out non-message events)
-    let AnyTimelineEvent::MessageLike(AnyMessageLikeEvent::RoomMessage(
-        MessageLikeEvent::Original(ref target_event_message),
-    )) = target_event
-    else {
-        trace!("Target is not a message");
-        return Ok(());
-    };
 
     let target_event_text = remove_plain_reply_fallback(target_event_message.content.body());
     let command = sedregex::ReplaceCommand::new(&command)?;
@@ -164,13 +191,13 @@ pub async fn on_room_message(
         // If the original message is not in a thread, make_reply_to won't create a reply in the thread
         // so we need to make_for_thread instead, which will always reply in the thread.
         RoomMessageEventContent::notice_html(result, changes).make_for_thread(
-            target_event_message,
+            &target_event_message,
             ReplyWithinThread::Yes,
             AddMentions::No,
         )
     } else {
         RoomMessageEventContent::notice_html(result, changes).make_reply_to(
-            target_event_message,
+            &target_event_message,
             ForwardThread::Yes,
             AddMentions::No,
         )
