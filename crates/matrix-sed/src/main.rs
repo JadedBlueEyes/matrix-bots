@@ -44,6 +44,12 @@ pub struct AccountConfig {
     /// Delete devices other than the one being used by this instance
     #[arg(long)]
     pub delete_other_devices: bool,
+    /// Device name to set, if it doesn't exist
+    #[arg(long, default_value_t = String::from("matrix-sed client"))]
+    pub device_name: String,
+    // Set the device name, even if it already exists
+    #[arg(long, default_value_t = false)]
+    pub set_device_name: bool,
 }
 
 /// The data needed to re-build a client.
@@ -192,7 +198,7 @@ async fn login(
 
         match matrix_auth
             .login_username(username, &password)
-            .initial_device_display_name("matrix-sed client")
+            .initial_device_display_name(&config.device_name)
             .await
         {
             Ok(_) => {
@@ -273,8 +279,8 @@ async fn run(
     }
     info!("Initial sync done");
 
+    let current_session = client.device_id().map(|d| d.to_owned());
     if config.account_config.delete_other_devices {
-        let current_session = client.device_id().map(|d| d.to_owned());
         info!(
             current_session = format!("{current_session:?}"),
             "Checking for other devices to delete"
@@ -312,6 +318,20 @@ async fn run(
                     ))),
                 )
                 .await?;
+        }
+    }
+
+    if config.account_config.set_device_name {
+        if let Some(current_session) = current_session {
+            info!(
+                current_session = format!("{current_session:?}"),
+                "Renaming device to {}", &config.account_config.device_name
+            );
+            client
+                .rename_device(&current_session, &config.account_config.device_name)
+                .await?;
+        } else {
+            warn!("No device ID found, cannot name device");
         }
     }
 
