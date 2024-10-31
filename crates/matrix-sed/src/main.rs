@@ -5,19 +5,33 @@ use std::path::Path;
 use clap::Parser;
 use handlers::on_room_message;
 use matrix_sdk::{
-    config::SyncSettings, matrix_auth::MatrixSession, ruma::api::client::filter::FilterDefinition,
+    config::SyncSettings,
+    matrix_auth::MatrixSession,
+    ruma::api::client::{
+        filter::FilterDefinition,
+        uiaa::{AuthData, Password, UserIdentifier},
+    },
     Client, LoopCtrl,
 };
 use rand::{distributions::Alphanumeric, Rng};
 use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
-use tracing::{error, info, warn};
+use tracing::{error, info, trace, warn};
 use tracing_log::AsTrace;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
 pub struct Config {
+    #[clap(flatten)]
+    pub account_config: AccountConfig,
+
+    #[clap(flatten)]
+    pub(crate) verbose: clap_verbosity_flag::Verbosity,
+}
+
+#[derive(Parser, Debug)]
+pub struct AccountConfig {
     /// URL of the homeserver to connect to
     #[arg(short, long, env = "MATRIX_SERVER")]
     pub server: String,
@@ -27,8 +41,9 @@ pub struct Config {
     /// Password of the bot
     #[arg(short, long, env = "MATRIX_PASSWORD")]
     pub password: Option<String>,
-    #[clap(flatten)]
-    pub(crate) verbose: clap_verbosity_flag::Verbosity,
+    /// Delete devices other than the one being used by this instance
+    #[arg(long)]
+    pub delete_other_devices: bool,
 }
 
 /// The data needed to re-build a client.
@@ -86,10 +101,13 @@ async fn main() -> anyhow::Result<()> {
     let (client, sync_token) = if session_file.exists() {
         restore_session(&session_file).await?
     } else {
-        (login(&data_dir, &session_file, &config).await?, None)
+        (
+            login(&data_dir, &session_file, &config.account_config).await?,
+            None,
+        )
     };
 
-    run(client, sync_token, &session_file).await?;
+    run(client, sync_token, &session_file, config).await?;
 
     Ok(())
 }
@@ -128,7 +146,7 @@ async fn restore_session(session_file: &Path) -> anyhow::Result<(Client, Option<
 async fn login(
     data_dir: &std::path::Path,
     session_file: &std::path::Path,
-    config: &Config,
+    config: &AccountConfig,
 ) -> anyhow::Result<Client> {
     info!("No previous session found, logging in…");
     let mut rng = rand::thread_rng();
@@ -213,6 +231,7 @@ async fn run(
     client: Client,
     initial_sync_token: Option<String>,
     session_file: &Path,
+    config: Config,
 ) -> anyhow::Result<()> {
     // handler for autojoin
     // Handers here run for historic messages too
@@ -253,6 +272,48 @@ async fn run(
         }
     }
     info!("Initial sync done");
+
+    if config.account_config.delete_other_devices {
+        let current_session = client.device_id().map(|d| d.to_owned());
+        info!(
+            current_session = format!("{current_session:?}"),
+            "Checking for other devices to delete"
+        );
+        let other_devices: Vec<_> = client
+            .devices()
+            .await?
+            .devices
+            .iter()
+            .filter(|device| Some(&device.device_id) != current_session.as_ref())
+            .map(|device| device.device_id.clone())
+            .collect();
+        if !other_devices.is_empty() {
+            trace!(
+                current_session = format!("{current_session:?}"),
+                other_devices = format!("{other_devices:?}"),
+                "Deleting other devices"
+            );
+            client
+                .delete_devices(
+                    &other_devices,
+                    Some(AuthData::Password(Password::new(
+                        UserIdentifier::UserIdOrLocalpart(config.account_config.username.clone()),
+                        config.account_config.password.clone().unwrap_or_else(|| {
+                            println!(
+                            "Type password for the bot (characters won't show up as you type them)"
+                        );
+                            match prompt_password("Password: ") {
+                                Ok(p) => p,
+                                Err(err) => {
+                                    panic!("FATAL: failed to get password: {err}");
+                                }
+                            }
+                        }),
+                    ))),
+                )
+                .await?;
+        }
+    }
 
     // Now that we've synced, attach handlers for new messages.
     client.add_event_handler(on_room_message);
