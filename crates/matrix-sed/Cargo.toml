@@ -8,10 +8,14 @@ repository.workspace = true
 anyhow = "1.0.91"
 clap = { version = "4.5.20", features = ["derive", "env"] }
 clap-verbosity-flag = "2.2.2"
+dirs = "5.0.1"
 matrix-sdk = { git = "https://github.com/matrix-org/matrix-rust-sdk", features = ["anyhow", "bundled-sqlite"] }
+rand = "0.8.5"
 regex = "1.11.1"
 rpassword = "7.3.1"
 sedregex = "0.2.5"
+serde = { version = "1.0.214", features = ["derive"] }
+serde_json = "1.0.132"
 similar = "2.6.0"
 tokio = { version = "1.41.0", features = ["rt"] }
 tracing = "0.1.40"
