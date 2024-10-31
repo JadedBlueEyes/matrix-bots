@@ -19,3 +19,4 @@ install-updater = false
 github-attestations = true
 
 global-artifacts-jobs = ["./release-image"]
+github-custom-job-permissions = { "release-image" = { contents = "read", packages = "write", attestations = "write", id-token = "write" } }

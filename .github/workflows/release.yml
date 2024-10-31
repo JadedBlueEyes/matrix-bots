@@ -215,6 +215,11 @@ jobs:
     with:
       plan: ${{ needs.plan.outputs.val }}
     secrets: inherit
+    permissions:
+      "attestations": "write"
+      "contents": "read"
+      "id-token": "write"
+      "packages": "write"
   # Determines if we should publish/announce
   host:
     needs:
