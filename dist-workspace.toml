@@ -17,3 +17,5 @@ install-path = "CARGO_HOME"
 install-updater = false
 # Whether to enable GitHub Attestations
 github-attestations = true
+
+global-artifacts-jobs = ["./release-image"]

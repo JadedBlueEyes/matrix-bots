@@ -1,0 +1,6 @@
+{
+    "matrix-sed": {
+        "file": "crates/matrix-sed/Dockerfile",
+        "image_name": "matrix-sed"
+    }
+}
