@@ -1,3 +1,4 @@
+mod cache;
 mod handlers;
 
 use std::path::Path;
@@ -112,6 +113,8 @@ async fn main() -> anyhow::Result<()> {
             None,
         )
     };
+
+    client.event_cache().subscribe()?;
 
     run(client, sync_token, &session_file, config).await?;
 

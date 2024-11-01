@@ -1640,6 +1640,7 @@ dependencies = [
  "clap",
  "clap-verbosity-flag",
  "dirs",
+ "futures-util",
  "matrix-sdk",
  "rand",
  "regex",

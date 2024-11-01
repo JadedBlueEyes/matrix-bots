@@ -1,3 +1,4 @@
+use crate::cache::EventSource;
 use matrix_sdk::{
     room::MessagesOptions,
     ruma::{
@@ -69,6 +70,7 @@ pub async fn on_room_message(
     event: OriginalSyncRoomMessageEvent,
     room: Room,
 ) -> anyhow::Result<()> {
+    let room = &room;
     if room.state() != RoomState::Joined {
         return Ok(());
     }
@@ -115,9 +117,9 @@ pub async fn on_room_message(
                 _ => None,
             }) {
         let target_event = room
-            .event(&target_id, None)
+            .get_event(&target_id)
             .await?
-            .raw()
+            .into_raw()
             .deserialize()?
             .into_full_event(room.room_id().to_owned());
 
@@ -203,6 +205,6 @@ pub async fn on_room_message(
         )
     };
 
-    send_or_log_error(&room, message).await;
+    send_or_log_error(room, message).await;
     Ok(())
 }
