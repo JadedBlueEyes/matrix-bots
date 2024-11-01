@@ -8,10 +8,10 @@ use handlers::on_room_message;
 use matrix_sdk::{
     config::SyncSettings,
     matrix_auth::MatrixSession,
-    ruma::api::client::{
+    ruma::{api::client::{
         filter::FilterDefinition,
         uiaa::{AuthData, Password, UserIdentifier},
-    },
+    }, presence::PresenceState},
     Client, LoopCtrl,
 };
 use rand::{distributions::Alphanumeric, Rng};
@@ -253,7 +253,7 @@ async fn run(
     // See <https://spec.matrix.org/v1.6/client-server-api/#lazy-loading-room-members>.
     let filter = FilterDefinition::with_lazy_loading();
 
-    let mut sync_settings = SyncSettings::default().filter(filter.into());
+    let mut sync_settings = SyncSettings::default().filter(filter.into()).set_presence(PresenceState::Online);
 
     // We restore the sync where we left.
     // This is not necessary when not using `sync_once`. The other sync methods get
