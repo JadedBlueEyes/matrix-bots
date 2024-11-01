@@ -208,7 +208,7 @@ async fn login(
             Err(error) => {
                 error!("Error logging in: {error}");
                 if config.password.is_some() {
-                    break;
+                    return Err(error.into());
                 }
             }
         }
