@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
       - id: set-matrix
         run: |
-            echo "::set-output name=matrix::$(echo $PLAN | jq --slurpfile images .github/workflows/images.json '[.releases[] | select(.app_name as $name | $name | IN($images[] | keys[])) | . + $images[][.app_name]]')"
+            echo "matrix=$(echo $PLAN | jq -c --slurpfile images .github/workflows/images.json '[.releases[] | select(.app_name as $name | $name | IN($images[] | keys[])) | . + $images[][.app_name]]')" >> "$GITHUB_OUTPUT"
   build-and-push-images:
     runs-on: ubuntu-latest
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
