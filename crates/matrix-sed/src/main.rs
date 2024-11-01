@@ -45,7 +45,7 @@ pub struct AccountConfig {
     #[arg(long)]
     pub delete_other_devices: bool,
     /// Device name to set, if it doesn't exist
-    #[arg(long, default_value_t = String::from("matrix-sed client"))]
+    #[arg(long, default_value_t = String::from("matrix-sed client"), env = "MATRIX_CLIENT_NAME")]
     pub device_name: String,
     /// Set the device name, even if it already exists
     #[arg(long, default_value_t = false)]
