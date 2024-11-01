@@ -1,3 +1,4 @@
+FROM rust:latest AS certs
 FROM rust:latest AS builder
 
 RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/rust-secure-code/cargo-auditable/releases/download/v0.6.4/cargo-auditable-installer.sh | sh
@@ -18,6 +19,11 @@ FROM scratch
 # Import from builder.
 
 WORKDIR /app
+
+# Copy root certs for tls into image
+# You can also mount the certs from the host
+# --volume /etc/ssl/certs:/etc/ssl/certs:ro
+COPY --from=certs /etc/ssl/certs /etc/ssl/certs
 
 # Copy our build
 COPY --from=builder /matrix-sed ./app 
