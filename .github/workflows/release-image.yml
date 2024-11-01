@@ -33,8 +33,7 @@ jobs:
       id-token: write
     needs: define-matrix
     strategy:
-      matrix: 
-        ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
       
     steps:
       - name: Checkout repository
