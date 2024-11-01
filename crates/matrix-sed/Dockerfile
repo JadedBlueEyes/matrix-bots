@@ -11,7 +11,7 @@ ENV CARGO_INCREMENTAL=0
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
-    cargo auditable build --locked --release --target x86_64-unknown-linux-gnu && \
+    cargo auditable build --locked --release --profile dist --target x86_64-unknown-linux-gnu && \
     cp ./target/x86_64-unknown-linux-gnu/release/matrix-sed /matrix-sed
 
 FROM scratch
