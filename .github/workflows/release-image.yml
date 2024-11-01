@@ -55,10 +55,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          labels: |
+            org.opencontainers.image.title=${{ matrix.package.display_name }}
           tags: |
-            type=semver,pattern={{version}},value=${{ matrix.package.app_version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.package.app_version }}
-            type=semver,pattern={{major}},value=${{ matrix.package.app_version }}
+            type=semver,pattern=v{{version}},value=${{ matrix.package.app_version }}
+            type=semver,pattern=v{{major}}.{{minor}},value=${{ matrix.package.app_version }},enable=${{ !startsWith(matrix.package.app_version, '0.0.') }}
+            type=semver,pattern=v{{major}},value=${{ matrix.package.app_version }},enable=${{ !startsWith(matrix.package.app_version, '0.') }}
           images: |
             ghcr.io/${{ matrix.package.hosting.github.owner }}/${{ matrix.package.image_name }}
 
@@ -74,6 +76,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           sbom: true
