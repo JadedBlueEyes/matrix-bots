@@ -57,6 +57,8 @@ jobs:
         with:
           labels: |
             org.opencontainers.image.title=${{ matrix.package.display_name }}
+          annotations: |
+            org.opencontainers.image.title=${{ matrix.package.display_name }}
           tags: |
             type=semver,pattern=v{{version}},value=${{ matrix.package.app_version }}
             type=semver,pattern=v{{major}}.{{minor}},value=${{ matrix.package.app_version }},enable=${{ !startsWith(matrix.package.app_version, '0.0.') }}
