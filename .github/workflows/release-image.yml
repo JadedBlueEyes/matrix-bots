@@ -33,7 +33,8 @@ jobs:
       id-token: write
     needs: define-matrix
     strategy:
-      matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
+      matrix: 
+        package: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
       
     steps:
       - name: Checkout repository
@@ -55,11 +56,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           tags: |
-            type=semver,pattern={{version}},value=${{ matrix.app_version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.app_version }}
-            type=semver,pattern={{major}},value=${{ matrix.app_version }}
+            type=semver,pattern={{version}},value=${{ matrix.package.app_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.package.app_version }}
+            type=semver,pattern={{major}},value=${{ matrix.package.app_version }}
           images: |
-            ghcr.io/${{ matrix.hosting.github.owner }}/${{ matrix.image_name }}
+            ghcr.io/${{ matrix.package.hosting.github.owner }}/${{ matrix.package.image_name }}
 
       # This step uses the `docker/build-push-action` action to build the image, based on your repository's `Dockerfile`. If the build succeeds, it pushes the image to GitHub Packages.
       # It uses the `context` parameter to define the build's context as the set of files located in the specified path. For more information, see "[Usage](https://github.com/docker/build-push-action#usage)" in the README of the `docker/build-push-action` repository.
@@ -76,12 +77,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           sbom: true
-          file: ${{ matrix.file }}
+          file: ${{ matrix.package.file }}
 
       # This step generates an artifact attestation for the image, which is an unforgeable statement about where and how it was built. It increases supply chain security for people who consume the image. For more information, see "[AUTOTITLE](/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)." 
       - name: Generate artifact attestation (ghcr.io)
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ghcr.io/${{ matrix.hosting.github.owner }}/${{ matrix.image_name }}
+          subject-name: ghcr.io/${{ matrix.package.hosting.github.owner }}/${{ matrix.package.image_name }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
