@@ -17,6 +17,7 @@ install-path = "CARGO_HOME"
 install-updater = false
 # Whether to enable GitHub Attestations
 github-attestations = true
+cargo-auditable = true
 # Global artifacts jobs to run in CI
 global-artifacts-jobs = ["./release-image"]
 github-custom-job-permissions = { "release-image" = { contents = "read", packages = "write", attestations = "write", id-token = "write" } }
