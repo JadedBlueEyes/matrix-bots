@@ -1,0 +1,30 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+      "config:recommended"
+    ],
+    "lockFileMaintenance": {
+      "enabled": true,
+      "automerge": true
+    },
+    "labels": ["dependencies"],
+    "packageRules": [
+      {
+        "matchUpdateTypes": ["minor", "patch"],
+        "matchCurrentVersion": "!/^0/",
+        "automerge": true
+      }
+    ],
+    "platformAutomerge": true,
+    "customManagers": [
+      {
+        "customType": "regex",
+        "description": "Update _VERSION variables in Dockerfiles",
+        "fileMatch": ["(^|/|\\.)Dockerfile$", "(^|/)Dockerfile\\.[^/]*$"],
+        "matchStrings": [
+          "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s"
+        ]
+      }
+    ]
+  }
+  
