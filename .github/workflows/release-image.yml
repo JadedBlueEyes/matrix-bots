@@ -55,6 +55,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          # default labels & annotations: https://github.com/docker/metadata-action/blob/master/src/meta.ts#L509
           labels: |
             org.opencontainers.image.title=${{ matrix.package.display_name }}
           annotations: |
