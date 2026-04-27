@@ -1938,7 +1938,7 @@ dependencies = [
  "dirs",
  "futures-util",
  "matrix-sdk",
- "rand 0.8.5",
+ "rand 0.9.0",
  "regex",
  "rpassword",
  "sedregex",
